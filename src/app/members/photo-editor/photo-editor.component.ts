@@ -13,9 +13,10 @@ import { User } from 'src/app/_models/user';
   styleUrls: ['./photo-editor.component.css']
 })
 export class PhotoEditorComponent implements OnInit {
+
   @Input() photos: Photo[];
-  user: User;
   @Output() getMemberPhotoChange = new EventEmitter<string>();
+
    uploader: FileUploader;
    hasBaseDropZoneOver = false;
    baseUrl = environment.apiUrl;
@@ -27,7 +28,7 @@ export class PhotoEditorComponent implements OnInit {
     this.initializeUploader();
   }
 
-  public fileOverBase(e: any): void {
+  fileOverBase(e: any): void {
     this.hasBaseDropZoneOver = e;
   }
 
@@ -42,11 +43,9 @@ export class PhotoEditorComponent implements OnInit {
      maxFileSize: 10 * 1024 * 1024
     });
 
-    this.uploader.onAfterAddingFile = (file) => {file.withCredentials = false; };
-
 
     this.uploader.onSuccessItem = (item, response, status, headers) => {
-      if(response) {
+      if (response) {
         const res: Photo = JSON.parse(response);
         const photo = {
           id: res.id,
@@ -64,14 +63,25 @@ export class PhotoEditorComponent implements OnInit {
     this.userService.setMainPhoto(this.authService.decodedToken.nameid, photo.id).subscribe(() => {
       this.currentMain = this.photos.filter(p => p.isMain === true)[0];
       this.currentMain.isMain = false;
-      this.getMemberPhotoChange.emit(photo.url);
+      photo.isMain = true;
+      this.authService.changeMemberPhoto(photo.url);
+      this.authService.currentUser.photoUrl = photo.url;
+      localStorage.setItem('user', JSON.stringify(this.authService.currentUser));
     }, error => {
       this.alertify.error(error);
     });
   }
 
-  updateMainPhoto(photoUrl) {
-    this.user.photoUrl = photoUrl;
+
+  deletePhoto(id: number) {
+    this.alertify.confirm('Are you sure you want to delete this photo', () => {
+      this.userService.deletePhoto(this.authService.decodedToken.nameid, id).subscribe(() => {
+        this.photos.splice(this.photos.findIndex(p => p.id === id), 1);
+        this.alertify.success('Photo has been deleted');
+      }, error => {
+        this.alertify.error('Failed to delte the photo');
+      });
+    });
   }
 
 }
